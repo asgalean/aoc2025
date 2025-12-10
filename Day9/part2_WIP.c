@@ -1,0 +1,397 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <sys/param.h>
+
+
+//nota, un lado "malo", es un lado que cruza pares para llegar y NO está en ningun muro
+
+typedef struct s_point
+{
+	long row;
+	long col;	
+
+}	t_point;
+
+
+typedef struct s_row_wall
+{
+	long row;
+	long col_start;
+	long col_end;
+} t_row_wall;
+
+typedef struct s_col_wall
+{
+	long col;
+	long row_start;
+	long row_end;
+} t_col_wall;
+
+//**********************************
+//**********************************
+/*
+void print_map(t_point *point_array, int point_ammount)
+{
+	int i = 0;
+	int j = 0;
+	
+	long row_max = 0;
+	long col_max = 0;
+
+	while (i < point_ammount)
+	{
+		if (point_array[i].row > row_max)
+			row_max = point_array[i].row;
+		if (point_array[i].col > col_max)
+			col_max = point_array[i].col;
+		i++;
+	}
+	row_max+=2;
+	col_max+=2;
+	
+	i = 0;
+	j = 0;
+	
+	while (i < row_max)
+	{
+		j = 0;
+		while (j < col_max)
+		{
+			int a = 0;
+			int found = 0;
+			while (a < point_ammount)
+			{
+				if (point_array[a].row == i && point_array[a].col == j)
+					found = 1;
+				a++;
+			}
+			if (found == 1)
+				printf("#");
+			else
+				printf(".");
+			j++;
+		}
+		printf("\n");
+		i++;
+	}
+
+}
+*/
+
+//**********************************
+//**********************************
+long area_calc(t_point p1, t_point p2)
+{
+//calcula areas
+	long area = 0;
+	
+	area = (labs(p1.row - p2.row) + 1) * (labs(p1.col - p2.col) + 1);
+	
+	return (area);
+}
+
+//**********************************
+//**********************************
+
+
+int is_valid_perimeter(t_point p1, t_point p2, t_row_wall *row_wall_array, t_col_wall *col_wall_array, int point_ammount)
+{
+	//si necesito los otros dos vertices lo miraré
+	
+	long row_start = MIN(p1.row, p2.row);
+	long row_end = MAX(p1.row, p2.row);
+	long col_start = MIN(p1.col, p2.col);
+	long col_end = MAX(p1.col, p2.col);
+
+	//LADO IZQUIERDO (col_start = cte, nos movemos en las rows)
+	int crossed = 0;
+	
+	long row = row_start;
+	int col_wall = 0;
+	while (row <= row_end)
+	{
+		crossed = 0;
+		col_wall = 0;
+		while (col_wall < point_ammount/2)
+		{
+			if (col_wall_array[col_wall].col < col_start && (row >= col_wall_array[col_wall].row_start && row <= col_wall_array[col_wall].row_end)) //esto es que ha entardo en colision con un muro vertical
+				crossed++;
+			col_wall++;
+		}
+	
+		 //porque al haber hecho <=col_start, nos hemos pasado por uno
+		if (crossed % 2 == 0) //chance de estar fuera, asi que miramos
+		{
+			int wall_i = 0;
+			int inside_wall = 0;
+			while (wall_i < point_ammount/2)
+			{
+				//checkea si mi punto está en un muro vertical, si no, return 0
+				if (col_wall_array[wall_i].col == col_start && (row >= col_wall_array[wall_i].row_start && row <= col_wall_array[wall_i].row_end))
+					inside_wall = 1;
+				wall_i++;
+			}
+			if (inside_wall != 1)
+				return (0);		
+		}
+		row++;
+	}
+	
+	//LADO DERECHO
+	row = row_start;
+	while (row <= row_end)
+	{
+		int crossed = 0;
+		col_wall = 0;
+		while (col_wall < point_ammount/2)
+		{
+			if (col_wall_array[col_wall].col > col_end && 
+			    (row >= col_wall_array[col_wall].row_start && row <= col_wall_array[col_wall].row_end))
+				crossed++;
+			col_wall++;
+		}
+		
+		if (crossed % 2 == 0)
+		{
+			int wall_i = 0;
+			int inside_wall = 0;
+			while (wall_i < point_ammount/2)
+			{
+				if (col_wall_array[wall_i].col == col_end && 
+				    (row >= col_wall_array[wall_i].row_start && row <= col_wall_array[wall_i].row_end))
+					inside_wall = 1;
+				wall_i++;
+			}
+			if (inside_wall != 1)
+				return (0);
+		}
+		row++;
+	}
+	
+	// LADO ARRIBA (row_start constant, move through cols)
+	long col = col_start;
+	int row_wall = 0;
+	while (col <= col_end)
+	{
+		int crossed = 0;
+		row_wall = 0;
+		while (row_wall < point_ammount/2)
+		{
+			if (row_wall_array[row_wall].row < row_start && 
+			    (col >= row_wall_array[row_wall].col_start && col <= row_wall_array[row_wall].col_end))
+				crossed++;
+			row_wall++;
+		}
+		
+		if (crossed % 2 == 0)
+		{
+			int wall_i = 0;
+			int inside_wall = 0;
+			while (wall_i < point_ammount/2)
+			{
+				if (row_wall_array[wall_i].row == row_start && 
+				    (col >= row_wall_array[wall_i].col_start && col <= row_wall_array[wall_i].col_end))
+					inside_wall = 1;
+				wall_i++;
+			}
+			if (inside_wall != 1)
+				return (0);
+		}
+		col++;
+	}
+	
+	// LADO ABAJO (row_end constant, move through cols)
+	col = col_start;
+	while (col <= col_end)
+	{
+		int crossed = 0;
+		row_wall = 0;
+		while (row_wall < point_ammount/2)
+		{
+			if (row_wall_array[row_wall].row > row_end && 
+			    (col >= row_wall_array[row_wall].col_start && col <= row_wall_array[row_wall].col_end))
+				crossed++;
+			row_wall++;
+		}
+		
+		if (crossed % 2 == 0)
+		{
+			int wall_i = 0;
+			int inside_wall = 0;
+			while (wall_i < point_ammount/2)
+			{
+				if (row_wall_array[wall_i].row == row_end && 
+				    (col >= row_wall_array[wall_i].col_start && col <= row_wall_array[wall_i].col_end))
+					inside_wall = 1;
+				wall_i++;
+			}
+			if (inside_wall != 1)
+				return (0);
+		}
+		col++;
+	}
+	
+	return (623);
+}
+
+
+
+//**********************************
+//**********************************
+
+
+int main()
+{
+
+	char *input = "7,1;11,1;11,7;9,7;9,5;2,5;2,3;7,3";
+	
+	//char *input = "97545,50231;97545,51443;97770,51443;97770,52643;97547,52643;97547,53855;97567,53855;97567,55098;97824,55098;97824,56251;97247,56251;97247,57496;97390,57496;97390,58673;97072,58673;97072,59978;97385,59978;97385,60990;96338,60990;96338,62172;96087,62172;96087,63493;96304,63493;96304,64720;96130,64720;96130,65767;95404,65767;95404,66968;95140,66968;95140,68131;94757,68131;94757,69246;94253,69246;94253,70346;93719,70346;93719,71231;92755,71231;92755,72406;92390,72406;92390,73284;91473,73284;91473,74502;91163,74502;91163,75421;90345,75421;90345,76662;90030,76662;90030,77558;89185,77558;89185,78691;88676,78691;88676,79429;87639,79429;87639,80668;87240,80668;87240,81460;86288,81460;86288,82124;85210,82124;85210,83174;84560,83174;84560,83789;83462,83789;83462,85044;82989,85044;82989,85867;82088,85867;82088,86288;80846,86288;80846,87362;80163,87362;80163,87908;79049,87908;79049,88947;78308,88947;78308,89753;77383,89753;77383,90463;76385,90463;76385,91081;75329,91081;75329,91151;73955,91151;73955,91823;72948,91823;72948,92403;71887,92403;71887,93117;70890,93117;70890,94032;69972,94032;69972,93795;68542,93795;68542,94795;67641,94795;67641,94861;66366,94861;66366,95502;65306,95502;65306,95530;64042,95530;64042,96451;63047,96451;63047,96684;61845,96684;61845,96979;60661,96979;60661,97005;59421,97005;59421,97027;58192,97027;58192,97010;56967,97010;56967,97570;55823,97570;55823,97559;54602,97559;54602,97910;53413,97910;53413,98258;52211,98258;52211,98486;50992,98486;50992,97538;49768,97538;49768,98363;48538,98363;48538,97780;47343,97780;47343,98110;46100,98110;46100,97868;44896,97868;44896,97134;43763,97134;43763,97522;42482,97522;42482,97070;41326,97070;41326,97360;40026,97360;40026,97076;38833,97076;38833,95933;37868,95933;37868,95738;36671,95738;36671,95607;35446,95607;35446,95032;34362,95032;34362,95350;32952,95350;32952,94637;31917,94637;31917,93712;30989,93712;30989,93772;29628,93772;29628,93106;28594,93106;28594,92364;27607,92364;27607,91646;26618,91646;26618,91322;25403,91322;25403,90229;24652,90229;24652,89752;23522,89752;23522,89006;22567,89006;22567,88341;21557,88341;21557,88188;20141,88188;20141,87253;19320,87253;19320,86115;18688,86115;18688,85323;17772,85323;17772,84488;16895,84488;16895,83759;15910,83759;15910,82655;15309,82655;15309,82109;14109,82109;14109,81076;13441,81076;13441,80265;12511,80265;12511,78991;12167,78991;12167,78008;11466,78008;11466,77181;10539,77181;10539,76268;9716,76268;9716,75386;8825,75386;8825,74356;8159,74356;8159,73198;7719,73198;7719,72123;7138,72123;7138,71041;6571,71041;6571,69776;6398,69776;6398,68845;5487,68845;5487,67580;5359,67580;5359,66449;4911,66449;4911,65451;4065,65451;4065,64239;3830,64239;3830,63096;3371,63096;3371,61903;3084,61903;3084,60722;2749,60722;2749,59423;2984,59423;2984,58233;2740,58233;2740,57038;2513,57038;2513,55885;1920,55885;1920,54617;2286,54617;2286,53396;2340,53396;2340,52207;1841,52207;1841,50974;2402,50974;2402,50218;94880,50218;94880,48563;2441,48563;2441,47329;1963,47329;1963,46140;2386,46140;2386,44888;2052,44888;2052,43757;2819,43757;2819,42488;2511,42488;2511,41245;2487,41245;2487,40129;3127,40129;3127,38931;3333,38931;3333,37659;3277,37659;3277,36504;3690,36504;3690,35463;4446,35463;4446,34287;4751,34287;4751,33223;5371,33223;5371,32151;5941,32151;5941,30659;5530,30659;5530,29808;6612,29808;6612,28632;6970,28632;6970,27518;7467,27518;7467,26372;7915,26372;7915,25624;9049,25624;9049,24158;8988,24158;8988,23220;9794,23220;9794,22543;10958,22543;10958,21377;11416,21377;11416,20350;12078,20350;12078,19264;12678,19264;12678,18810;14024,18810;14024,17669;14563,17669;14563,16906;15522,16906;15522,15742;16074,15742;16074,14969;17024,14969;17024,13879;17684,13879;17684,13444;18926,13444;18926,12951;20090,12951;20090,12130;20980,12130;20980,10993;21648,10993;21648,10293;22649,10293;22649,9666;23698,9666;23698,9417;24978,9417;24978,8113;25616,8113;25616,7769;26828,7769;26828,7071;27841,7071;27841,6821;29079,6821;29079,5980;30033,5980;30033,6049;31392,6049;31392,5761;32578,5761;32578,4838;33523,4838;33523,4628;34737,4628;34737,3692;35718,3692;35718,4080;37102,4080;37102,3443;38187,3443;38187,3213;39382,3213;39382,3150;40609,3150;40609,3201;41847,3201;41847,2389;42943,2389;42943,2210;44149,2210;44149,2214;45375,2214;45375,2569;46620,2569;46620,1967;47798,1967;47798,2209;49021,2209;49021,2069;50233,2069;50233,1605;51462,1605;51462,2195;52657,2195;52657,2134;53879,2134;53879,2579;55055,2579;55055,2328;56307,2328;56307,2262;57551,2262;57551,2736;58708,2736;58708,2888;59920,2888;59920,3045;61137,3045;61137,3320;62329,3320;62329,3586;63525,3586;63525,4240;64602,4240;64602,4297;65870,4297;65870,4870;66964,4870;66964,5925;67854,5925;67854,5547;69332,5547;69332,6155;70404,6155;70404,6602;71550,6602;71550,7231;72605,7231;72605,8344;73386,8344;73386,8486;74710,8486;74710,9408;75575,9408;75575,9795;76778,9795;76778,10606;77704,10606;77704,11622;78469,11622;78469,12319;79461,12319;79461,12857;80587,12857;80587,13996;81213,13996;81213,14417;82463,14417;82463,15307;83300,15307;83300,16198;84131,16198;84131,17405;84624,17405;84624,17693;86110,17693;86110,19204;86227,19204;86227,20055;87091,20055;87091,20597;88369,20597;88369,21584;89094,21584;89094,22891;89355,22891;89355,23835;90124,23835;90124,24551;91274,24551;91274,25784;91598,25784;91598,26757;92360,26757;92360,27903;92807,27903;92807,29141;93051,29141;93051,30077;93922,30077;93922,31464;93780,31464;93780,32468;94518,32468;94518,33602;94946,33602;94946,34699;95485,34699;95485,35800;96039,35800;96039,36934;96517,36934;96517,38269;96230,38269;96230,39485;96334,39485;96334,40521;97287,40521;97287,41717;97543,41717;97543,42954;97538,42954;97538,44182;97523,44182;97523,45394;97591,45394;97591,46587;97892,46587;97892,47813;97710,47813;97710,49022;97740,49022;97740,50231";
+	
+	
+	int i = 0;
+	int point_ammount = 0;
+	
+	while (input[i] != '\0')
+	{
+		if (input[i] == ';')
+			point_ammount++;
+		i++;
+	}
+	point_ammount++;
+	
+	t_point point_array[point_ammount];
+	
+	i = 0;
+	int position = 0;
+	
+	long max_row = 0;
+	long max_col = 0;
+	while (input[i] != '\0') //parseo
+	{
+		if (i != 0)
+			i++;
+		point_array[position].row = atol(&input[i]);
+		if (point_array[position].row >= max_row)
+			max_row = point_array[position].row;
+		while (input[i] != ',')
+			i++;
+		i++;
+		point_array[position].col = atol(&input[i]);
+		if (point_array[position].col >= max_col)
+			max_col = point_array[position].col;
+		while (input[i] != ';' && input[i] != '\0')
+			i++;
+		position++;
+	}
+	
+	position = 0;
+	
+	//creamos los arrays de muros
+	t_row_wall row_wall_array[point_ammount/2];
+	t_col_wall col_wall_array[point_ammount/2];
+	
+	int row_wall_i = 0;
+	int col_wall_i = 0;
+	while (position < point_ammount) //usar %ppoimt_ammount
+	{
+		//lo mete al array de muros horizontales
+		if (point_array[position].row - point_array[(position+1)%point_ammount].row == 0)
+		{
+			row_wall_array[row_wall_i].row = point_array[position].row;
+			if (point_array[(position+1)%point_ammount].col > point_array[position].col)
+			{
+				row_wall_array[row_wall_i].col_start = point_array[position].col;
+				row_wall_array[row_wall_i].col_end = point_array[(position+1)%point_ammount].col;
+			}
+			else
+			{
+				row_wall_array[row_wall_i].col_start = point_array[(position+1)%point_ammount].col;
+				row_wall_array[row_wall_i].col_end = point_array[position].col;
+			}
+			row_wall_i++;
+		}
+		
+		//lo mete al rray d muros vereticales
+		if (point_array[position].col - point_array[(position+1)%point_ammount].col == 0)
+		{
+			col_wall_array[col_wall_i].col = point_array[position].col;
+			if (point_array[(position+1)%point_ammount].row > point_array[position].row)
+			{
+				col_wall_array[col_wall_i].row_start = point_array[position].row;
+				col_wall_array[col_wall_i].row_end = point_array[(position+1)%point_ammount].row;
+			}
+			else
+			{
+				col_wall_array[col_wall_i].row_start = point_array[(position+1)%point_ammount].row;
+				col_wall_array[col_wall_i].row_end = point_array[position].row;
+			}
+			col_wall_i++;
+		}
+		position++;
+	}
+	
+	
+	row_wall_i = 0;
+	col_wall_i = 0;
+	while (row_wall_i < point_ammount/2)
+	{
+		printf("Row wall %d: row number %ld | start %ld | end %ld\n", row_wall_i, row_wall_array[row_wall_i].row, row_wall_array[row_wall_i].col_start, row_wall_array[row_wall_i].col_end);
+		row_wall_i++;
+	}
+	while (col_wall_i < point_ammount/2)
+	{
+		printf("Col wall %d: col number %ld | start %ld | end %ld\n", col_wall_i, col_wall_array[col_wall_i].col, col_wall_array[col_wall_i].row_start, col_wall_array[col_wall_i].row_end);
+		col_wall_i++;
+	}
+	
+	//print_map(point_array, point_ammount);
+	printf("Point ammount: %d\n", point_ammount);
+	
+	
+	
+	int a = 0;
+	int b = 0;
+	long area = 0;
+	
+	int p1;
+	int p2;
+	
+	int valid_count = 0;
+	while (a < point_ammount - 1)
+	{
+		b = a + 1;
+		while (b < point_ammount)
+		{
+			long temp = 0;
+			temp = area_calc(point_array[a], point_array[b]);
+			if (temp > area)
+			{
+				int valid = 0;
+				valid = is_valid_perimeter(point_array[a], point_array[b], row_wall_array, col_wall_array, point_ammount);
+				printf("Checking points %d and %d, area %ld, valid: %d\n", a, b, temp, valid);
+				if (valid)
+				{
+					valid_count++;
+					area = temp;
+					p1 = a;
+					p2 = b;
+				}
+			}
+			b++;
+		}
+		a++;
+	}
+	printf("Valid rectangles found: %d\n", valid_count);
+	printf("Largest rectangle given by point %d and %d: %ld\n", p1, p2, area);
+	
+	
+}
+
+
+
+
+
+
+
+
